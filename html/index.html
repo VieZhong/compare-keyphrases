@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>关键词</title>
+    <style>
+        body {
+            padding: 30px;
+            margin: 0;
+        }
+        .item {
+            margin-top: 26px;
+            font-size: 18px;
+            display: flex;
+            line-height: 30px;
+        }
+        .item > span {
+            font-size: bold;
+            width: 200px;
+            text-transform: capitalize;
+        }
+        .data {
+            flex: 1;
+        }
+        .buttons {
+            text-align: center;
+            margin-top: 100px;
+            position: fixed;
+            bottom: 200px;
+            width: 100%;
+            font-size: 30px;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="info_window">
+        <div class="title item">
+            <span>Title:</span>
+            <div class="data"></div>
+        </div>
+        <div class="abstract item">
+            <span>Abstract:</span>
+            <div class="data"></div>
+        </div>
+        <div class="ref_keyword item">
+            <span>Ref_Keyword:</span>
+            <div class="data"></div>
+        </div>
+        <div class="base_line item">
+            <span>Baseline_Keyword:</span>
+            <div class="data"></div>
+        </div>
+        <div class="dec_keyword item">
+            <span>Dec_Keyword:</span>
+            <div class="data"></div>
+        </div>
+    </div>
+    <div class="buttons">
+        <button onclick="prev()">Prev</button>
+        <input type="text" placeholder="0" value="0" id="index" onchange="get()">
+        <button onclick="next()">Next</button>
+    </div>
+</body>
+    <script>
+        function getEqualIndex(ref, dec) {
+            const refwords = ref.replace(/\s+/g, "").split(';')
+            const decwords = dec.replace(/\s+/g, "").split(';')
+            const result = []
+            for(let i = 0, len = decwords.length; i < len; i++) {
+                if(refwords.includes(decwords[i])) {
+                    result.push(i)
+                }
+            }
+            return result
+        }
+        function get() {
+            const xmlhttp = new XMLHttpRequest()
+            xmlhttp.onreadystatechange = () => {
+                if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                   data = JSON.parse(xmlhttp.responseText)
+                   show(data)
+                }
+            }
+            xmlhttp.open("GET", `/data/${document.querySelector("#index").value}`, true)
+            xmlhttp.send()
+        }
+        function show(data) {
+            const colors = ["#FF0000", "#FFA500", "#FFFF00", "#008000", "#00FFFF", "#0000FF", "#4B0082", "#800880"]
+            const items = Object.keys(data).sort((x, y) => x.length - y.length)
+            let html = ""
+            const ref_keyword = data['ref_keyword']
+            for(let [idx, item] of Object.entries(items)) {
+                if(/_keyword$/.test(item) && item !== "ref_keyword") {
+                    const correctIndex = getEqualIndex(ref_keyword, data[item])
+                    data[item] = data[item].split(';').map((word, i) => {
+                        if(correctIndex.includes(i)) {
+                            return `<span style="background-color:${colors[idx - 3]}">${word}</span>`
+                        }
+                        return word
+                    }).join(';')
+                } else if ('ref_keyword' == item) {
+                    const ref = ref_keyword.split(';')
+                    data['ref_keyword'] = ref_keyword.replace(/\s+/g, '').split(';').map((key, i) => {
+                        if(data['abstract'].indexOf(key) < 0 && data['title'].indexOf(key) < 0) {
+                            return `<span style="text-decoration:underline">${ref[i]}</span>`
+                        }
+                        return ref[i]
+                    }).join(';')
+                }
+                if(/_keyword$/.test(item)) {
+                    html += `<div class="${item} item">
+                        <span>${item}:</span>
+                        <div class="data">
+                            ${data[item].replace(/;/g, ';&nbsp;&nbsp;&nbsp;&nbsp;')}
+                        </div>
+                    </div>`
+                } else {
+                    html += `<div class="${item} item">
+                        <span>${item}:</span>
+                        <div class="data">
+                            ${data[item]}
+                        </div>
+                    </div>`
+                }
+            }
+            document.querySelector(`.info_window`).innerHTML = html
+        }
+        function prev() {
+            let v = +document.querySelector("#index").value
+            if(v) {
+                document.querySelector("#index").value--
+                get()
+            }
+        }
+        function next() {
+            document.querySelector("#index").value++
+            get()
+        }
+        document.addEventListener("keydown", ({keyCode}) => {
+            if(keyCode == 39) {
+                next()
+            } else if (keyCode == 37) {
+                prev()
+            }
+        })
+        get()
+    </script>
+</html>
